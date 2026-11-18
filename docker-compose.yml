@@ -1,0 +1,39 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "5672:5672"     # порт AMQP (для приложений)
+      - "15672:15672"   # веб-интерфейс управления
+    environment:
+      RABBITMQ_DEFAULT_USER: app
+      RABBITMQ_DEFAULT_PASS: secret
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  producer:
+    build: ./producer
+    environment:
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: app
+      RABBIT_PASSWORD: secret
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
+  consumer:
+    build: ./consumer
+    environment:
+      RABBIT_HOST: rabbitmq
+      RABBIT_USER: app
+      RABBIT_PASSWORD: secret
+    volumes:
+      - ./logs:/logs    
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
